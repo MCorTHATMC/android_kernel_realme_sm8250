@@ -1,0 +1,42 @@
+name: Build Kernel Using Action
+on:
+  workflow_dispatch:
+
+jobs:
+  kernel-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Android Kernel Action
+        uses: daboynb/android-kernel-action@v1.1
+        with:
+          arch: arm64
+          compiler: clang
+          defconfig: vendor/kona-perf_defconfig
+          image: Image.gz-dtb
+
+      - name: Upload dtbo.img
+        uses: actions/upload-artifact@v4
+        with:
+          name: dtbo.img
+          path: arch/arm64/boot/dtbo.img
+
+      - name: Upload DTBs
+        uses: actions/upload-artifact@v4
+        with:
+          name: dtbs
+          path: arch/arm64/boot/dts/vendor/qcom/*.dtb
+
+      - name: Upload vmlinux
+        uses: actions/upload-artifact@v4
+        with:
+          name: vmlinux
+          path: vmlinux
+
+      - name: Upload System.map
+        uses: actions/upload-artifact@v4
+        with:
+          name: System.map
+          path: System.map
