@@ -33,7 +33,14 @@ PATCH_VBMETA_FLAG=auto;
 . tools/ak3-core.sh;
 
 # boot install
-dump_boot; # use split_boot to skip ramdisk unpack, e.g. for devices with init_boot ramdisk
+dump_boot;
 
 # kernel
 write_boot;
+
+# dtbo
+DTBO_BLOCK=/dev/block/bootdevice/by-name/dtbo;
+if [ -f dtbo.img ] && [ -b "$DTBO_BLOCK" ]; then
+  ui_print "Flashing dtbo.img to dtbo partition...";
+  dd if=dtbo.img of=$DTBO_BLOCK bs=4k;
+fi

@@ -114,6 +114,11 @@ jobs:
         . tools/ak3-core.sh;
         dump_boot;
         write_boot;
+        DTBO_BLOCK=/dev/block/bootdevice/by-name/dtbo;
+        if [ -f dtbo.img ] && [ -b "\$DTBO_BLOCK" ]; then
+          ui_print "Flashing dtbo.img to dtbo partition...";
+          dd if=dtbo.img of=\$DTBO_BLOCK bs=4k;
+        fi
         AKEOF
 
         # 开始打包
