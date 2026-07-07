@@ -42,32 +42,26 @@ jobs:
         export PATH=$GITHUB_WORKSPACE/proton-clang/bin:$PATH
         export ARCH=arm64
         export SUBARCH=arm64
-        export CC=clang
-        export CLANG_TRIPLE=aarch64-linux-gnu-
-        export CROSS_COMPILE=aarch64-linux-gnu-
-        export CROSS_COMPILE_COMPAT=arm-linux-gnueabi-
+
+        # ✅ 补丁 1：让 smb5-lib.h 变健全，在它的第 1 行强行注入官方标准电源头文件
+        sed -i '1s/^/#include <linux\/power_supply.h>\n/' drivers/power/supply/qcom/smb5-lib.h
+
+        # ✅ 补丁 2：维持我们的懒人外挂，让整个目录自动包含 smb5-lib.h
         echo "EXTRA_CFLAGS += -include smb5-lib.h" >> drivers/power/supply/qcom/Makefile
-        # 1. 彻底回正轨：直接传参生成 defconfig，带有双引号的 HOSTCC 绝对不会再被切开
+
+        # 生成配置
         make O=out \
-            HOSTCC="gcc -B/usr/bin/" \
-            HOSTCXX="g++ -B/usr/bin/" \
-            CC=clang \
-            CLANG_TRIPLE=aarch64-linux-gnu- \
-            CROSS_COMPILE=aarch64-linux-gnu- \
-            CROSS_COMPILE_COMPAT=arm-linux-gnueabi- \
+            HOSTCC="gcc -B/usr/bin/" HOSTCXX="g++ -B/usr/bin/" CC=clang \
+            CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_COMPAT=arm-linux-gnueabi- \
             ${{ env.KERNEL_DEFCONFIG }}
 
-        # 2. 直接传参开始正式编译
+        # 正式编译
         make O=out -j$(nproc) \
-            HOSTCC="gcc -B/usr/bin/" \
-            HOSTCXX="g++ -B/usr/bin/" \
-            CC=clang \
-            CLANG_TRIPLE=aarch64-linux-gnu- \
-            CROSS_COMPILE=aarch64-linux-gnu- \
-            CROSS_COMPILE_COMPAT=arm-linux-gnueabi- \
-            KCFLAGS="-Wno-error -Wno-implicit-function-declaration -Wno-visibility" \
+            HOSTCC="gcc -B/usr/bin/" HOSTCXX="g++ -B/usr/bin/" CC=clang \
+            CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_COMPAT=arm-linux-gnueabi- \
+            KCFLAGS="-Wno-error -Wno-implicit-function-declaration -Wno-visibility -Wno-typedef-redefinition" \
             Image.gz-dtb dtbo.img
-
+            
     - name: Pack AnyKernel3
       run: |
         git clone --depth=1 https://github.com/osm0sis/AnyKernel3.git -b ${{ env.ANYKERNEL_BRANCH }} $GITHUB_WORKSPACE/AnyKernel3
