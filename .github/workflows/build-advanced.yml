@@ -4,10 +4,7 @@ on:
   workflow_dispatch:
 
 env:
-  KERNEL_SOURCE_URL: 'https://github.com/MCorTHATMC/android_kernel_realme_sm8250'
-  KERNEL_BRANCH: 'Entropy-1.6'
   KERNEL_DEFCONFIG: 'vendor/kona-perf_defconfig'
-  CLANG_VERSION: 'r416183b'
   ANYKERNEL_BRANCH: 'master'
 
 jobs:
@@ -26,18 +23,22 @@ jobs:
     - name: Setup Build Environment
       run: |
         sudo apt-get update
-        sudo apt-get install -y bc build-essential libssl-dev libcrypto++-dev libncurses5-dev libncursesw5-dev libglib2.0-dev libpixman-1-dev bison flex python3 python3-pip zip unzip git ccache libelf-dev clang lld gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
+        sudo apt-get install -y bc build-essential libssl-dev libncurses5-dev libncursesw5-dev \
+          bison flex python3 python3-pip zip unzip git ccache libelf-dev
+
+    - name: Clone Proton Clang
+      run: |
+        git clone --depth=1 https://github.com/kdrag0n/proton-clang $GITHUB_WORKSPACE/proton-clang
 
     - name: Checkout Kernel Source
       uses: actions/checkout@v4
       with:
-        repository: ${{ env.KERNEL_SOURCE_URL }}
-        ref: ${{ env.KERNEL_BRANCH }}
         path: kernel
 
     - name: Build Kernel
       run: |
         cd $GITHUB_WORKSPACE/kernel
+        export PATH=$GITHUB_WORKSPACE/proton-clang/bin:$PATH
         export ARCH=arm64
         export SUBARCH=arm64
         export CC=clang
