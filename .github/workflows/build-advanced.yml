@@ -41,26 +41,28 @@ jobs:
         cd $GITHUB_WORKSPACE/kernel
         export PATH=$GITHUB_WORKSPACE/proton-clang/bin:$PATH
         export ARCH=arm64
-        export SUBARCH=arm64
 
-        # ✅ 补丁 1：让 smb5-lib.h 变健全，在它的第 1 行强行注入官方标准电源头文件
-        sed -i '1s/^/#include <linux\/power_supply.h>\n/' drivers/power/supply/qcom/smb5-lib.h
+        # mkdtboimg.py 需要 python 命令
+        sudo ln -sf /usr/bin/python3 /usr/bin/python
 
-        # ✅ 补丁 2：维持我们的懒人外挂，让整个目录自动包含 smb5-lib.h
-        echo "EXTRA_CFLAGS += -include smb5-lib.h" >> drivers/power/supply/qcom/Makefile
+        # 修复 schgm-flash.c: 移除 OPLUS_FEATURE_CHG_BASIC 条件编译,
+        # 否则 smb5-lib.h(定义了 smb_charger/smb_irq_data 结构体) 不会被包含
+        sed -i '/#ifndef OPLUS_FEATURE_CHG_BASIC/,/#endif/{
+          /#ifndef OPLUS_FEATURE_CHG_BASIC/d
+          /#endif/d
+        }' drivers/power/supply/qcom/schgm-flash.c
 
-        # 生成配置
-        make O=out \
-            HOSTCC="gcc -B/usr/bin/" HOSTCXX="g++ -B/usr/bin/" CC=clang \
-            CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_COMPAT=arm-linux-gnueabi- \
-            ${{ env.KERNEL_DEFCONFIG }}
+        # 生成基础 defconfig
+        make LLVM=1 O=out ${{ env.KERNEL_DEFCONFIG }}
 
-        # 正式编译
-        make O=out -j$(nproc) \
-            HOSTCC="gcc -B/usr/bin/" HOSTCXX="g++ -B/usr/bin/" CC=clang \
-            CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_COMPAT=arm-linux-gnueabi- \
-            KCFLAGS="-Wno-error -Wno-implicit-function-declaration -Wno-visibility -Wno-typedef-redefinition" \
-            Image.gz-dtb dtbo.img
+        # 合并 oplus.config (Oplus 充电/指纹/触屏/工程模式等必须模块)
+        cat arch/arm64/configs/vendor/oplus.config >> out/.config
+        make LLVM=1 O=out olddefconfig
+
+        # 编译内核 + 设备树
+        make LLVM=1 O=out -j$(nproc) \
+          KCFLAGS='-Wno-error=implicit-function-declaration -Wno-error=visibility -Wno-error=incompatible-pointer-types' \
+          Image.gz-dtb dtbo.img
             
     - name: Pack AnyKernel3
       run: |
