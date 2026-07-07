@@ -31,9 +31,7 @@ jobs:
     - name: Download Clang (AOSP)
       run: |
         mkdir -p $GITHUB_WORKSPACE/clang
-        cd $GITHUB_WORKSPACE/clang
-        wget https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-${{ env.CLANG_VERSION }}.tar.gz
-        tar -zxf clang-${{ env.CLANG_VERSION }}.tar.gz
+        git clone --depth=1 https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 -b clang-${{ env.CLANG_VERSION }} $GITHUB_WORKSPACE/clang
 
     - name: Checkout Kernel Source
       uses: actions/checkout@v4
