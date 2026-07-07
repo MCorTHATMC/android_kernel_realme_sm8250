@@ -68,7 +68,6 @@ jobs:
       run: |
         git clone --depth=1 https://github.com/osm0sis/AnyKernel3.git -b ${{ env.ANYKERNEL_BRANCH }} $GITHUB_WORKSPACE/AnyKernel3
         
-        # ✅ 优化 3：采用弹性搜索复制，防止因内核输出文件名不匹配导致 CI 崩溃
         cd $GITHUB_WORKSPACE/kernel/out/arch/arm64/boot/
         
         # 自动寻找 Image 开头的文件（如 Image.gz-dtb 或 Image.gz）并复制
@@ -80,7 +79,7 @@ jobs:
             echo "❌ 未能找到内核内核镜像文件！" && exit 1
         fi
         
-        # 递归寻找 dtbo.img（有的内核会把 dtbo 生成在 dts/vendor/ 目录下）
+        # 复制 dtbo.img
         DTBO=$(find . -name "dtbo.img" | head -n 1)
         if [ -n "$DTBO" ]; then
             cp $DTBO $GITHUB_WORKSPACE/AnyKernel3/
@@ -89,9 +88,37 @@ jobs:
             echo "⚠️ 未找到 dtbo.img，将跳过 dtbo 打包（部分机型可能不需要）"
         fi
 
+        # 生成正确的 anykernel.sh（跳过设备检查，SM8250 分区路径）
+        cat > $GITHUB_WORKSPACE/AnyKernel3/anykernel.sh << 'AKEOF'
+        ### AnyKernel3 Ramdisk Mod Script
+        ## osm0sis @ xda-developers
+        properties() { '
+        kernel.string=Realme SM8250 (Kona) Kernel
+        do.devicecheck=0
+        do.modules=0
+        do.systemless=1
+        do.cleanup=1
+        do.cleanuponabort=0
+        supported.versions=
+        supported.patchlevels=
+        supported.vendorpatchlevels=
+        '; }
+        boot_attributes() {
+        set_perm_recursive 0 0 755 644 \$RAMDISK/*;
+        set_perm_recursive 0 0 750 750 \$RAMDISK/init* \$RAMDISK/sbin;
+        }
+        BLOCK=/dev/block/bootdevice/by-name/boot;
+        IS_SLOT_DEVICE=0;
+        RAMDISK_COMPRESSION=auto;
+        PATCH_VBMETA_FLAG=auto;
+        . tools/ak3-core.sh;
+        dump_boot;
+        write_boot;
+        AKEOF
+
         # 开始打包
         cd $GITHUB_WORKSPACE/AnyKernel3
-        zip -r9 ../Kernel-Release.zip * -x .git* README.md
+        zip -r9 ../Kernel-Release.zip * -x '.git*' 'README.md'
 
     - name: Upload Zip
       uses: actions/upload-artifact@v4
