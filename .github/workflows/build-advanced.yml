@@ -42,21 +42,31 @@ jobs:
         export PATH=$GITHUB_WORKSPACE/proton-clang/bin:$PATH
         export ARCH=arm64
         export SUBARCH=arm64
-        
-        # 定义通用的编译参数变量，防止后面写两遍又长又乱
-        BUILD_ARGS="HOSTCC=gcc\ -B/usr/bin/\ \
-                    HOSTCXX=g++\ -B/usr/bin/\ \
-                    CC=clang\ \
-                    CLANG_TRIPLE=aarch64-linux-gnu-\ \
-                    CROSS_COMPILE=aarch64-linux-gnu-\ \
-                    CROSS_COMPILE_COMPAT=arm-linux-gnueabi-"
+        export CC=clang
+        export CLANG_TRIPLE=aarch64-linux-gnu-
+        export CROSS_COMPILE=aarch64-linux-gnu-
+        export CROSS_COMPILE_COMPAT=arm-linux-gnueabi-
 
-        # ✅ 修正：生成 defconfig 的时候，就必须把整套 Clang 参数传进去测试
-        make O=out $BUILD_ARGS ${{ env.KERNEL_DEFCONFIG }}
+        # 1. 彻底回正轨：直接传参生成 defconfig，带有双引号的 HOSTCC 绝对不会再被切开
+        make O=out \
+            HOSTCC="gcc -B/usr/bin/" \
+            HOSTCXX="g++ -B/usr/bin/" \
+            CC=clang \
+            CLANG_TRIPLE=aarch64-linux-gnu- \
+            CROSS_COMPILE=aarch64-linux-gnu- \
+            CROSS_COMPILE_COMPAT=arm-linux-gnueabi- \
+            ${{ env.KERNEL_DEFCONFIG }}
 
-        # 开始正式编译
-        make O=out -j$(nproc) $BUILD_ARGS Image.gz-dtb dtbo.img
-        
+        # 2. 直接传参开始正式编译
+        make O=out -j$(nproc) \
+            HOSTCC="gcc -B/usr/bin/" \
+            HOSTCXX="g++ -B/usr/bin/" \
+            CC=clang \
+            CLANG_TRIPLE=aarch64-linux-gnu- \
+            CROSS_COMPILE=aarch64-linux-gnu- \
+            CROSS_COMPILE_COMPAT=arm-linux-gnueabi- \
+            Image.gz-dtb dtbo.img
+            
     - name: Pack AnyKernel3
       run: |
         git clone --depth=1 https://github.com/osm0sis/AnyKernel3.git -b ${{ env.ANYKERNEL_BRANCH }} $GITHUB_WORKSPACE/AnyKernel3
