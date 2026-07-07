@@ -46,7 +46,7 @@ jobs:
         export CLANG_TRIPLE=aarch64-linux-gnu-
         export CROSS_COMPILE=aarch64-linux-gnu-
         export CROSS_COMPILE_COMPAT=arm-linux-gnueabi-
-
+        echo "EXTRA_CFLAGS += -include smb5-lib.h" >> drivers/power/supply/qcom/Makefile
         # 1. 彻底回正轨：直接传参生成 defconfig，带有双引号的 HOSTCC 绝对不会再被切开
         make O=out \
             HOSTCC="gcc -B/usr/bin/" \
@@ -65,8 +65,9 @@ jobs:
             CLANG_TRIPLE=aarch64-linux-gnu- \
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_COMPAT=arm-linux-gnueabi- \
+            KCFLAGS="-Wno-error -Wno-implicit-function-declaration -Wno-visibility" \
             Image.gz-dtb dtbo.img
-            
+
     - name: Pack AnyKernel3
       run: |
         git clone --depth=1 https://github.com/osm0sis/AnyKernel3.git -b ${{ env.ANYKERNEL_BRANCH }} $GITHUB_WORKSPACE/AnyKernel3
